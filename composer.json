@@ -32,7 +32,7 @@
             "src"
         ],
         "files": [
-            "functions_include.php"
+            "src/React/Promise/functions_include.php"
         ]
     }
 }
