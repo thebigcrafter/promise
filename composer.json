@@ -30,6 +30,9 @@
     "autoload": {
         "classmap": [
             "src"
+        ],
+        "files": [
+            "src/React/Promise/functions_include.php"
         ]
     }
 }
