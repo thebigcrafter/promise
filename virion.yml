@@ -1,6 +1,6 @@
 name: Promise
 version: 0.0.1
-antigen: React\Promise
+antigen: thebigcrafter\Promise
 api: [5.0.0]
 authors: ["Jan Sorgalla", "Christian Lück", "Cees-Jan Kiewiet", "Chris Boden"]
 description: Promises/A implementation for PHP.
