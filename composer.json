@@ -34,5 +34,11 @@
         "files": [
             "src/React/Promise/functions_include.php"
         ]
+    },
+    "extra": {
+        "virion": {
+            "spec": "3.0",
+            "namespace-root": "React\\Promise"
+        }
     }
 }
