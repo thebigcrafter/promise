@@ -2,11 +2,14 @@
 
 namespace React\Promise;
 
+/** @phpstan-consistent-constructor */
 class UnhandledRejectionException extends \RuntimeException
 {
+    /** @var mixed */
     private $reason;
 
-    public static function resolve($reason)
+    /** @param mixed $reason */
+    public static function resolve($reason): \Throwable
     {
         if ($reason instanceof \Exception || $reason instanceof \Throwable) {
             return $reason;
@@ -15,6 +18,7 @@ class UnhandledRejectionException extends \RuntimeException
         return new static($reason);
     }
 
+    /** @param mixed $reason */
     public function __construct($reason)
     {
         $this->reason = $reason;
@@ -24,6 +28,7 @@ class UnhandledRejectionException extends \RuntimeException
         parent::__construct($message, 0);
     }
 
+    /** @return mixed */
     public function getReason()
     {
         return $this->reason;

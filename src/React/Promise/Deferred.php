@@ -4,21 +4,26 @@ namespace React\Promise;
 
 class Deferred implements PromisorInterface
 {
+    /** @var Promise|null */
     private $promise;
+    /** @var callable|null */
     private $resolveCallback;
+    /** @var callable|null */
     private $rejectCallback;
+    /** @var callable|null */
     private $notifyCallback;
+    /** @var callable|null */
     private $canceller;
 
-    public function __construct(callable $canceller = null)
+    public function __construct(?callable $canceller = null)
     {
         $this->canceller = $canceller;
     }
 
-    public function promise()
+    public function promise(): PromiseInterface
     {
         if (null === $this->promise) {
-            $this->promise = new Promise(function ($resolve, $reject, $notify) {
+            $this->promise = new Promise(function (callable $resolve, callable $reject, callable $notify) {
                 $this->resolveCallback = $resolve;
                 $this->rejectCallback  = $reject;
                 $this->notifyCallback  = $notify;
@@ -29,36 +34,46 @@ class Deferred implements PromisorInterface
         return $this->promise;
     }
 
-    public function resolve($value = null)
+    /** @param mixed $value */
+    public function resolve($value = null): void
     {
         $this->promise();
 
-        \call_user_func($this->resolveCallback, $value);
+        if ($this->resolveCallback !== null) {
+            \call_user_func($this->resolveCallback, $value);
+        }
     }
 
-    public function reject($reason = null)
+    /** @param mixed $reason */
+    public function reject($reason = null): void
     {
         $this->promise();
 
-        \call_user_func($this->rejectCallback, $reason);
+        if ($this->rejectCallback !== null) {
+            \call_user_func($this->rejectCallback, $reason);
+        }
     }
 
     /**
      * @deprecated 2.6.0 Progress support is deprecated and should not be used anymore.
      * @param mixed $update
      */
-    public function notify($update = null)
+    /** @param mixed $update */
+    public function notify($update = null): void
     {
         $this->promise();
 
-        \call_user_func($this->notifyCallback, $update);
+        if ($this->notifyCallback !== null) {
+            \call_user_func($this->notifyCallback, $update);
+        }
     }
 
     /**
      * @deprecated 2.2.0
      * @see Deferred::notify()
      */
-    public function progress($update = null)
+    /** @param mixed $update */
+    public function progress($update = null): void
     {
         $this->notify($update);
     }

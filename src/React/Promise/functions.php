@@ -14,9 +14,9 @@ namespace React\Promise;
  * If `$promiseOrValue` is a promise, it will be returned as is.
  *
  * @param mixed $promiseOrValue
- * @return PromiseInterface
+ * @return ExtendedPromiseInterface
  */
-function resolve($promiseOrValue = null)
+function resolve($promiseOrValue = null): ExtendedPromiseInterface
 {
     if ($promiseOrValue instanceof ExtendedPromiseInterface) {
         return $promiseOrValue;
@@ -53,14 +53,14 @@ function resolve($promiseOrValue = null)
  * the value of another promise.
  *
  * @param mixed $promiseOrValue
- * @return PromiseInterface
+ * @return ExtendedPromiseInterface
  */
-function reject($promiseOrValue = null)
+function reject($promiseOrValue = null): ExtendedPromiseInterface
 {
     if ($promiseOrValue instanceof PromiseInterface) {
-        return resolve($promiseOrValue)->then(function ($value) {
+        return resolve(resolve($promiseOrValue)->then(function ($value) {
             return new RejectedPromise($value);
-        });
+        }));
     }
 
     return new RejectedPromise($promiseOrValue);
@@ -72,10 +72,10 @@ function reject($promiseOrValue = null)
  * will be an array containing the resolution values of each of the items in
  * `$promisesOrValues`.
  *
- * @param array $promisesOrValues
- * @return PromiseInterface
+ * @param array<int|string, mixed> $promisesOrValues
+ * @return ExtendedPromiseInterface
  */
-function all($promisesOrValues)
+function all(array $promisesOrValues): ExtendedPromiseInterface
 {
     return map($promisesOrValues, function ($val) {
         return $val;
@@ -89,16 +89,17 @@ function all($promisesOrValues)
  * The returned promise will become **infinitely pending** if  `$promisesOrValues`
  * contains 0 items.
  *
- * @param array $promisesOrValues
- * @return PromiseInterface
+ * @param array<int|string, mixed> $promisesOrValues
+ * @return ExtendedPromiseInterface
  */
-function race($promisesOrValues)
+function race(array $promisesOrValues): ExtendedPromiseInterface
 {
     $cancellationQueue = new CancellationQueue();
     $cancellationQueue->enqueue($promisesOrValues);
 
-    return new Promise(function ($resolve, $reject, $notify) use ($promisesOrValues, $cancellationQueue) {
+    return new Promise(function (callable $resolve, callable $reject, callable $notify) use ($promisesOrValues, $cancellationQueue) {
         resolve($promisesOrValues)
+            /** @param mixed $array */
             ->done(function ($array) use ($cancellationQueue, $resolve, $reject, $notify) {
                 if (!is_array($array) || !$array) {
                     $resolve();
@@ -126,15 +127,15 @@ function race($promisesOrValues)
  * The returned promise will also reject with a `React\Promise\Exception\LengthException`
  * if `$promisesOrValues` contains 0 items.
  *
- * @param array $promisesOrValues
- * @return PromiseInterface
+ * @param array<int|string, mixed> $promisesOrValues
+ * @return ExtendedPromiseInterface
  */
-function any($promisesOrValues)
+function any(array $promisesOrValues): ExtendedPromiseInterface
 {
-    return some($promisesOrValues, 1)
-        ->then(function ($val) {
+    return resolve(some($promisesOrValues, 1)
+        ->then(function (array $val) {
             return \array_shift($val);
-        });
+        }));
 }
 
 /**
@@ -151,17 +152,18 @@ function any($promisesOrValues)
  * The returned promise will also reject with a `React\Promise\Exception\LengthException`
  * if `$promisesOrValues` contains less items than `$howMany`.
  *
- * @param array $promisesOrValues
+ * @param array<int|string, mixed> $promisesOrValues
  * @param int $howMany
- * @return PromiseInterface
+ * @return ExtendedPromiseInterface
  */
-function some($promisesOrValues, $howMany)
+function some(array $promisesOrValues, int $howMany): ExtendedPromiseInterface
 {
     $cancellationQueue = new CancellationQueue();
     $cancellationQueue->enqueue($promisesOrValues);
 
-    return new Promise(function ($resolve, $reject, $notify) use ($promisesOrValues, $howMany, $cancellationQueue) {
+    return new Promise(function (callable $resolve, callable $reject, callable $notify) use ($promisesOrValues, $howMany, $cancellationQueue) {
         resolve($promisesOrValues)
+            /** @param mixed $array */
             ->done(function ($array) use ($howMany, $cancellationQueue, $resolve, $reject, $notify) {
                 if (!\is_array($array) || $howMany < 1) {
                     $resolve([]);
@@ -188,7 +190,7 @@ function some($promisesOrValues, $howMany)
                 $reasons   = [];
 
                 foreach ($array as $i => $promiseOrValue) {
-                    $fulfiller = function ($val) use ($i, &$values, &$toResolve, $toReject, $resolve) {
+                    $fulfiller = function ($val) use ($i, &$values, &$toResolve, $toReject, $resolve): void {
                         if ($toResolve < 1 || $toReject < 1) {
                             return;
                         }
@@ -200,7 +202,7 @@ function some($promisesOrValues, $howMany)
                         }
                     };
 
-                    $rejecter = function ($reason) use ($i, &$reasons, &$toReject, $toResolve, $reject) {
+                    $rejecter = function ($reason) use ($i, &$reasons, &$toReject, $toResolve, $reject): void {
                         if ($toResolve < 1 || $toReject < 1) {
                             return;
                         }
@@ -228,17 +230,18 @@ function some($promisesOrValues, $howMany)
  * The map function receives each item as argument, where item is a fully resolved
  * value of a promise or value in `$promisesOrValues`.
  *
- * @param array $promisesOrValues
+ * @param array<int|string, mixed> $promisesOrValues
  * @param callable $mapFunc
- * @return PromiseInterface
+ * @return ExtendedPromiseInterface
  */
-function map($promisesOrValues, callable $mapFunc)
+function map(array $promisesOrValues, callable $mapFunc): ExtendedPromiseInterface
 {
     $cancellationQueue = new CancellationQueue();
     $cancellationQueue->enqueue($promisesOrValues);
 
-    return new Promise(function ($resolve, $reject, $notify) use ($promisesOrValues, $mapFunc, $cancellationQueue) {
+    return new Promise(function (callable $resolve, callable $reject, callable $notify) use ($promisesOrValues, $mapFunc, $cancellationQueue) {
         resolve($promisesOrValues)
+            /** @param mixed $array */
             ->done(function ($array) use ($mapFunc, $cancellationQueue, $resolve, $reject, $notify) {
                 if (!\is_array($array) || !$array) {
                     $resolve([]);
@@ -252,10 +255,11 @@ function map($promisesOrValues, callable $mapFunc)
                     $cancellationQueue->enqueue($promiseOrValue);
                     $values[$i] = null;
 
-                    resolve($promiseOrValue)
+                    resolve(resolve($promiseOrValue)
                         ->then($mapFunc)
+                    )
                         ->done(
-                            function ($mapped) use ($i, &$values, &$toResolve, $resolve) {
+                            function ($mapped) use ($i, &$values, &$toResolve, $resolve): void {
                                 $values[$i] = $mapped;
 
                                 if (0 === --$toResolve) {
@@ -276,18 +280,19 @@ function map($promisesOrValues, callable $mapFunc)
  * promise, *and* `$initialValue` may be a promise or a value for the starting
  * value.
  *
- * @param array $promisesOrValues
+ * @param array<int|string, mixed> $promisesOrValues
  * @param callable $reduceFunc
  * @param mixed $initialValue
- * @return PromiseInterface
+ * @return ExtendedPromiseInterface
  */
-function reduce($promisesOrValues, callable $reduceFunc, $initialValue = null)
+function reduce(array $promisesOrValues, callable $reduceFunc, $initialValue = null): ExtendedPromiseInterface
 {
     $cancellationQueue = new CancellationQueue();
     $cancellationQueue->enqueue($promisesOrValues);
 
-    return new Promise(function ($resolve, $reject, $notify) use ($promisesOrValues, $reduceFunc, $initialValue, $cancellationQueue) {
+    return new Promise(function (callable $resolve, callable $reject, callable $notify) use ($promisesOrValues, $reduceFunc, $initialValue, $cancellationQueue) {
         resolve($promisesOrValues)
+            /** @param mixed $array */
             ->done(function ($array) use ($reduceFunc, $initialValue, $cancellationQueue, $resolve, $reject, $notify) {
                 if (!\is_array($array)) {
                     $array = [];
@@ -301,7 +306,7 @@ function reduce($promisesOrValues, callable $reduceFunc, $initialValue = null)
                 $wrappedReduceFunc = function ($current, $val) use ($reduceFunc, $cancellationQueue, $total, &$i) {
                     $cancellationQueue->enqueue($val);
 
-                    return $current
+                    return resolve($current)
                         ->then(function ($c) use ($reduceFunc, $total, &$i, $val) {
                             return resolve($val)
                                 ->then(function ($value) use ($reduceFunc, $total, &$i, $c) {
@@ -312,16 +317,19 @@ function reduce($promisesOrValues, callable $reduceFunc, $initialValue = null)
 
                 $cancellationQueue->enqueue($initialValue);
 
-                \array_reduce($array, $wrappedReduceFunc, resolve($initialValue))
+                    resolve(\array_reduce($array, $wrappedReduceFunc, resolve($initialValue)))
                     ->done($resolve, $reject, $notify);
             }, $reject, $notify);
     }, $cancellationQueue);
 }
 
 /**
+ * @param callable $callback
+ * @param mixed $object
+ * @return bool
  * @internal
  */
-function _checkTypehint(callable $callback, $object)
+function _checkTypehint(callable $callback, $object): bool
 {
     if (!\is_object($object)) {
         return true;
@@ -331,8 +339,10 @@ function _checkTypehint(callable $callback, $object)
         $callbackReflection = new \ReflectionMethod($callback[0], $callback[1]);
     } elseif (\is_object($callback) && !$callback instanceof \Closure) {
         $callbackReflection = new \ReflectionMethod($callback, '__invoke');
-    } else {
+    } elseif (\is_string($callback) || $callback instanceof \Closure) {
         $callbackReflection = new \ReflectionFunction($callback);
+    } else {
+        throw new \LogicException('Unsupported callback type');
     }
 
     $parameters = $callbackReflection->getParameters();
@@ -366,7 +376,7 @@ function _checkTypehint(callable $callback, $object)
             break;
         case $type instanceof \ReflectionIntersectionType:
             $isTypeUnion = false;
-        case $type instanceof \ReflectionUnionType;
+        case $type instanceof \ReflectionUnionType:
             $types = $type->getTypes();
             break;
         default:
@@ -378,18 +388,22 @@ function _checkTypehint(callable $callback, $object)
         return true;
     }
 
+    $matches = false;
+
     foreach ($types as $type) {
 
-        if ($type instanceof \ReflectionIntersectionType) {
+        if ($type instanceof \ReflectionNamedType && $type->isBuiltin()) {
+            $matches = \gettype($object) === $type->getName();
+        } elseif ($type instanceof \ReflectionNamedType) {
+            $matches = \is_a($object, $type->getName());
+        } elseif ($type instanceof \ReflectionIntersectionType || $type instanceof \ReflectionUnionType) {
+            $matches = true;
             foreach ($type->getTypes() as $typeToMatch) {
-                if (!($matches = ($typeToMatch->isBuiltin() && \gettype($object) === $typeToMatch->getName())
-                    || (new \ReflectionClass($typeToMatch->getName()))->isInstance($object))) {
+                if (!$typeToMatch instanceof \ReflectionNamedType || $typeToMatch->isBuiltin() || !\is_a($object, $typeToMatch->getName())) {
+                    $matches = false;
                     break;
                 }
             }
-        } else {
-            $matches = ($type->isBuiltin() && \gettype($object) === $type->getName())
-                || (new \ReflectionClass($type->getName()))->isInstance($object);
         }
 
         // If we look for a single match (union), we can return early on match

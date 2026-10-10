@@ -7,8 +7,10 @@ namespace React\Promise;
  */
 class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseInterface
 {
+    /** @var mixed */
     private $value;
 
+    /** @param mixed $value */
     public function __construct($value = null)
     {
         if ($value instanceof PromiseInterface) {
@@ -18,7 +20,7 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
         $this->value = $value;
     }
 
-    public function then(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
+    public function then(?callable $onFulfilled = null, ?callable $onRejected = null, ?callable $onProgress = null): ExtendedPromiseInterface
     {
         if (null === $onFulfilled) {
             return $this;
@@ -28,12 +30,10 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
             return resolve($onFulfilled($this->value));
         } catch (\Throwable $exception) {
             return new RejectedPromise($exception);
-        } catch (\Exception $exception) {
-            return new RejectedPromise($exception);
         }
     }
 
-    public function done(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
+    public function done(?callable $onFulfilled = null, ?callable $onRejected = null, ?callable $onProgress = null): void
     {
         if (null === $onFulfilled) {
             return;
@@ -46,12 +46,12 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
         }
     }
 
-    public function otherwise(callable $onRejected)
+    public function otherwise(callable $onRejected): ExtendedPromiseInterface
     {
         return $this;
     }
 
-    public function always(callable $onFulfilledOrRejected)
+    public function always(callable $onFulfilledOrRejected): ExtendedPromiseInterface
     {
         return $this->then(function ($value) use ($onFulfilledOrRejected) {
             return resolve($onFulfilledOrRejected())->then(function () use ($value) {
@@ -60,12 +60,12 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
         });
     }
 
-    public function progress(callable $onProgress)
+    public function progress(callable $onProgress): ExtendedPromiseInterface
     {
         return $this;
     }
 
-    public function cancel()
+    public function cancel(): void
     {
     }
 }

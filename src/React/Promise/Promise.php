@@ -2,20 +2,25 @@
 
 namespace React\Promise;
 
-require __DIR__.'/functions.php';
-
+/** @phpstan-consistent-constructor */
 class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
 {
+    /** @var callable|null */
     private $canceller;
+    /** @var ExtendedPromiseInterface|null */
     private $result;
 
+    /** @var list<callable(ExtendedPromiseInterface): void> */
     private $handlers = [];
+    /** @var list<callable(mixed): void> */
     private $progressHandlers = [];
 
+    /** @var int */
     private $requiredCancelRequests = 0;
+    /** @var int */
     private $cancelRequests = 0;
 
-    public function __construct(callable $resolver, callable $canceller = null)
+    public function __construct(callable $resolver, ?callable $canceller = null)
     {
         $this->canceller = $canceller;
 
@@ -27,10 +32,10 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         $this->call($cb);
     }
 
-    public function then(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
+    public function then(?callable $onFulfilled = null, ?callable $onRejected = null, ?callable $onProgress = null): ExtendedPromiseInterface
     {
         if (null !== $this->result) {
-            return $this->result->then($onFulfilled, $onRejected, $onProgress);
+            return resolve($this->result->then($onFulfilled, $onRejected, $onProgress));
         }
 
         if (null === $this->canceller) {
@@ -48,6 +53,10 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         return new static(
             $this->resolver($onFulfilled, $onRejected, $onProgress),
             static function () use (&$parent) {
+                if ($parent === null) {
+                    return;
+                }
+
                 if (++$parent->cancelRequests >= $parent->requiredCancelRequests) {
                     $parent->cancel();
                 }
@@ -57,10 +66,11 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         );
     }
 
-    public function done(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
+    public function done(?callable $onFulfilled = null, ?callable $onRejected = null, ?callable $onProgress = null): void
     {
         if (null !== $this->result) {
-            return $this->result->done($onFulfilled, $onRejected, $onProgress);
+            $this->result->done($onFulfilled, $onRejected, $onProgress);
+            return;
         }
 
         $this->handlers[] = static function (ExtendedPromiseInterface $promise) use ($onFulfilled, $onRejected) {
@@ -73,7 +83,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         }
     }
 
-    public function otherwise(callable $onRejected)
+    public function otherwise(callable $onRejected): ExtendedPromiseInterface
     {
         return $this->then(null, static function ($reason) use ($onRejected) {
             if (!_checkTypehint($onRejected, $reason)) {
@@ -84,7 +94,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         });
     }
 
-    public function always(callable $onFulfilledOrRejected)
+    public function always(callable $onFulfilledOrRejected): ExtendedPromiseInterface
     {
         return $this->then(static function ($value) use ($onFulfilledOrRejected) {
             return resolve($onFulfilledOrRejected())->then(function () use ($value) {
@@ -97,12 +107,12 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         });
     }
 
-    public function progress(callable $onProgress)
+    public function progress(callable $onProgress): ExtendedPromiseInterface
     {
         return $this->then(null, null, $onProgress);
     }
 
-    public function cancel()
+    public function cancel(): void
     {
         if (null === $this->canceller || null !== $this->result) {
             return;
@@ -114,16 +124,14 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         $this->call($canceller);
     }
 
-    private function resolver(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
+    private function resolver(?callable $onFulfilled = null, ?callable $onRejected = null, ?callable $onProgress = null): callable
     {
-        return function ($resolve, $reject, $notify) use ($onFulfilled, $onRejected, $onProgress) {
+        return function (callable $resolve, callable $reject, callable $notify) use ($onFulfilled, $onRejected, $onProgress) {
             if ($onProgress) {
-                $progressHandler = static function ($update) use ($notify, $onProgress) {
+                $progressHandler = static function ($update) use ($notify, $onProgress): void {
                     try {
                         $notify($onProgress($update));
                     } catch (\Throwable $e) {
-                        $notify($e);
-                    } catch (\Exception $e) {
                         $notify($e);
                     }
                 };
@@ -132,8 +140,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             }
 
             $this->handlers[] = static function (ExtendedPromiseInterface $promise) use ($onFulfilled, $onRejected, $resolve, $reject, $progressHandler) {
-                $promise
-                    ->then($onFulfilled, $onRejected)
+                resolve($promise->then($onFulfilled, $onRejected))
                     ->done($resolve, $reject, $progressHandler);
             };
 
@@ -141,7 +148,8 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         };
     }
 
-    private function reject($reason = null)
+    /** @param mixed $reason */
+    private function reject($reason = null): void
     {
         if (null !== $this->result) {
             return;
@@ -150,7 +158,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         $this->settle(reject($reason));
     }
 
-    private function settle(ExtendedPromiseInterface $promise)
+    private function settle(ExtendedPromiseInterface $promise): void
     {
         $promise = $this->unwrap($promise);
 
@@ -171,7 +179,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         }
     }
 
-    private function unwrap($promise)
+    private function unwrap(ExtendedPromiseInterface $promise): ExtendedPromiseInterface
     {
         $promise = $this->extract($promise);
 
@@ -182,7 +190,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         return $promise;
     }
 
-    private function extract($promise)
+    private function extract(ExtendedPromiseInterface $promise): ExtendedPromiseInterface
     {
         if ($promise instanceof LazyPromise) {
             $promise = $promise->promise();
@@ -191,7 +199,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         return $promise;
     }
 
-    private function call(callable $cb)
+    private function call(callable $cb): void
     {
         // Explicitly overwrite argument with null value. This ensure that this
         // argument does not show up in the stack trace in PHP 7+ only.
@@ -207,8 +215,10 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             $ref = new \ReflectionMethod($callback[0], $callback[1]);
         } elseif (\is_object($callback) && !$callback instanceof \Closure) {
             $ref = new \ReflectionMethod($callback, '__invoke');
-        } else {
+        } elseif (\is_string($callback) || $callback instanceof \Closure) {
             $ref = new \ReflectionFunction($callback);
+        } else {
+            throw new \LogicException('Unsupported callback type');
         }
         $args = $ref->getNumberOfParameters();
 
@@ -248,9 +258,6 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
                 );
             }
         } catch (\Throwable $e) {
-            $target = null;
-            $this->reject($e);
-        } catch (\Exception $e) {
             $target = null;
             $this->reject($e);
         }

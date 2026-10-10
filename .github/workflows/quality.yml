@@ -1,0 +1,26 @@
+name: Run tests and static analysis
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Run tests and static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up PHP environment
+        uses: shivammathur/setup-php@daf6ef8034382aea2c4e1521ead10758419b02cf
+        with:
+          php-version: 8.2
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction
+      - name: Run promise smoke tests
+        run: composer test
+      - name: Run PHPStan at maximum level
+        run: composer analyse

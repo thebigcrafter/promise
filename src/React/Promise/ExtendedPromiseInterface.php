@@ -19,7 +19,7 @@ interface ExtendedPromiseInterface extends PromiseInterface
      * @param callable|null $onProgress This argument is deprecated and should not be used anymore.
      * @return void
      */
-    public function done(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null);
+    public function done(?callable $onFulfilled = null, ?callable $onRejected = null, ?callable $onProgress = null): void;
 
     /**
      * Registers a rejection handler for promise. It is a shortcut for:
@@ -34,7 +34,7 @@ interface ExtendedPromiseInterface extends PromiseInterface
      * @param callable $onRejected
      * @return ExtendedPromiseInterface
      */
-    public function otherwise(callable $onRejected);
+    public function otherwise(callable $onRejected): ExtendedPromiseInterface;
 
     /**
      * Allows you to execute "cleanup" type tasks in a promise chain.
@@ -81,7 +81,7 @@ interface ExtendedPromiseInterface extends PromiseInterface
      * @param callable $onFulfilledOrRejected
      * @return ExtendedPromiseInterface
      */
-    public function always(callable $onFulfilledOrRejected);
+    public function always(callable $onFulfilledOrRejected): ExtendedPromiseInterface;
 
     /**
      * Registers a handler for progress updates from promise. It is a shortcut for:
@@ -94,5 +94,5 @@ interface ExtendedPromiseInterface extends PromiseInterface
      * @return ExtendedPromiseInterface
      * @deprecated 2.6.0 Progress support is deprecated and should not be used anymore.
      */
-    public function progress(callable $onProgress);
+    public function progress(callable $onProgress): ExtendedPromiseInterface;
 }
